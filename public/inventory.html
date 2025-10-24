@@ -25,166 +25,499 @@
   <link href="css/style.css" rel="stylesheet">
 
   <style>
-    /* Keep the main site styles and add inventory-specific ones */
-    #intro { display: none; } /* Hide carousel on inventory page */
-    
-    .inventory-section {
-      padding: 120px 0 60px 0;
+    /* Match The Office theme exactly */
+    body {
+      background: #f7f8f9;
+      color: #444;
+      font-family: "Open Sans", sans-serif;
     }
 
+    /* Make header match main site with dark blue background */
+    #header {
+      background: #2c3e50 !important;
+      height: 70px;
+      padding: 0;
+      box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    #header #logo img {
+      max-height: 50px;
+    }
+
+    #header .nav-menu > li > a {
+      color: #fff !important;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #header .nav-menu > li > a:hover,
+    #header .nav-menu > li.menu-active > a {
+      color: #18d26e !important;
+    }
+
+    #header .nav-menu a.logout-link {
+      color: #ff6b6b !important;
+    }
+
+    #header .nav-menu a.logout-link:hover {
+      color: #ff5252 !important;
+    }
+
+    /* Main content area */
+    #main {
+      margin-top: 70px;
+      padding-bottom: 0;
+    }
+    
+    .inventory-section {
+      padding: 60px 0;
+      background: #f7f8f9;
+      min-height: calc(100vh - 140px);
+    }
+
+    /* Section header with green underline */
     .section-header {
-      margin-bottom: 50px;
+      margin-bottom: 40px;
     }
 
     .section-header h3 {
-      font-size: 32px;
+      font-size: 36px;
       color: #18d26e;
       text-transform: uppercase;
       text-align: center;
       font-weight: 700;
       position: relative;
-      padding-bottom: 15px;
+      padding-bottom: 20px;
+      margin-bottom: 10px;
+      font-family: "Montserrat", sans-serif;
+      letter-spacing: 1px;
     }
 
     .section-header h3::after {
       content: '';
       position: absolute;
       display: block;
-      width: 50px;
-      height: 3px;
+      width: 60px;
+      height: 4px;
       background: #18d26e;
       bottom: 0;
-      left: calc(50% - 25px);
+      left: calc(50% - 30px);
     }
 
     .section-header p {
       text-align: center;
-      padding-bottom: 15px;
-      color: #535074;
+      padding-bottom: 10px;
+      color: #2c3e50;
+      font-size: 16px;
+      font-weight: 500;
     }
 
     .user-welcome {
       text-align: center;
       color: #18d26e;
       font-weight: 600;
-      margin-top: 10px;
+      margin-top: 15px;
+      font-size: 16px;
     }
 
+    .user-welcome i {
+      margin-right: 5px;
+    }
+
+    /* Control panel card */
     .control-panel {
       background: #fff;
-      padding: 30px;
-      border-radius: 4px;
-      box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+      padding: 35px 40px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 30px rgba(44, 62, 80, 0.1);
       margin-bottom: 30px;
+      border-top: 4px solid #18d26e;
     }
 
+    /* Stats boxes - white cards with circular icons */
     .stats-row {
-      margin-top: 20px;
+      margin-top: 30px;
     }
 
     .stat-box {
-      background: linear-gradient(to right, #18d26e 0%, #13a456 100%);
-      padding: 25px;
-      border-radius: 4px;
+      background: #fff;
+      padding: 45px 35px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 25px rgba(44, 62, 80, 0.08);
       text-align: center;
-      color: white;
-      box-shadow: 0px 2px 15px rgba(24, 210, 110, 0.3);
+      transition: all 0.4s ease;
+      border-left: 5px solid #18d26e;
+      height: 100%;
+    }
+
+    .stat-box:hover {
+      box-shadow: 0px 5px 35px rgba(24, 210, 110, 0.25);
+      transform: translateY(-10px);
+    }
+
+    .stat-box .icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #18d26e 0%, #13a456 100%);
+      color: #fff;
+      font-size: 40px;
+      margin: 0 auto 25px auto;
+      transition: all 0.4s ease;
+      box-shadow: 0 5px 20px rgba(24, 210, 110, 0.3);
+    }
+
+    .stat-box:hover .icon {
+      background: #2c3e50;
+      transform: rotate(360deg);
     }
 
     .stat-box h4 {
-      font-size: 36px;
+      font-size: 48px;
       font-weight: 700;
-      margin: 0;
+      margin: 15px 0 10px 0;
+      color: #2c3e50;
+      font-family: "Montserrat", sans-serif;
     }
 
     .stat-box p {
-      margin: 5px 0 0 0;
-      font-size: 14px;
+      margin: 0;
+      font-size: 15px;
+      color: #7f8c8d;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
+    /* Search control */
     .search-control {
-      border-radius: 4px;
-      padding: 12px 20px;
-      border: 1px solid #ddd;
+      border-radius: 50px;
+      padding: 14px 25px;
+      border: 2px solid #ddd;
+      font-size: 15px;
+      transition: all 0.3s ease;
     }
 
     .search-control:focus {
       border-color: #18d26e;
-      box-shadow: 0 0 0 0.2rem rgba(24, 210, 110, 0.25);
+      outline: none;
+      box-shadow: 0 0 15px rgba(24, 210, 110, 0.2);
     }
 
+    /* Add Product button */
     .btn-add {
-      background: #18d26e;
+      background: linear-gradient(135deg, #18d26e 0%, #13a456 100%);
       border: 0;
-      padding: 12px 30px;
+      padding: 14px 35px;
       color: #fff;
-      transition: 0.4s;
-      border-radius: 4px;
-      font-weight: 600;
+      transition: all 0.4s ease;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 5px 20px rgba(24, 210, 110, 0.3);
     }
 
     .btn-add:hover {
-      background: #13a456;
+      background: linear-gradient(135deg, #13a456 0%, #0f7d40 100%);
       color: #fff;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(24, 210, 110, 0.4);
     }
 
+    .btn-add i {
+      margin-right: 8px;
+    }
+
+    /* Inventory table card */
     .inventory-table {
       background: #fff;
-      padding: 25px;
-      border-radius: 4px;
-      box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+      padding: 35px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 30px rgba(44, 62, 80, 0.1);
+      border-top: 4px solid #2c3e50;
+    }
+
+    .table {
+      margin-bottom: 0;
+    }
+
+    .table thead {
+      background: #2c3e50;
     }
 
     .table thead th {
-      border-top: none;
-      border-bottom: 2px solid #18d26e;
-      font-weight: 600;
-      color: #413e66;
-      padding: 15px;
+      border: none;
+      font-weight: 700;
+      color: #fff !important;
+      padding: 18px 15px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .table tbody td {
       vertical-align: middle;
-      padding: 15px;
-      color: #535074;
+      padding: 20px 15px;
+      color: #2c3e50;
+      border-bottom: 1px solid #ecf0f1;
+      font-size: 15px;
+      font-weight: 500;
     }
 
+    .table tbody tr {
+      transition: all 0.3s ease;
+    }
+
+    .table-hover tbody tr:hover {
+      background-color: #e8f8f0;
+      transform: scale(1.01);
+    }
+
+    /* Status badges */
     .badge-status {
-      padding: 5px 10px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .badge-in-stock { background: #d4edda; color: #155724; }
-    .badge-low-stock { background: #fff3cd; color: #856404; }
-    .badge-out-stock { background: #f8d7da; color: #721c24; }
-
-    .btn-action {
       padding: 6px 14px;
-      font-size: 12px;
-      margin: 2px;
-      border-radius: 3px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
+    .badge-in-stock { 
+      background: #d4edda; 
+      color: #155724;
+      border: 2px solid #c3e6cb;
+    }
+    
+    .badge-low-stock { 
+      background: #fff3cd; 
+      color: #856404;
+      border: 2px solid #ffeeba;
+    }
+    
+    .badge-out-stock { 
+      background: #f8d7da; 
+      color: #721c24;
+      border: 2px solid #f5c6cb;
+    }
+
+    /* Action buttons */
+    .btn-action {
+      padding: 8px 18px;
+      font-size: 12px;
+      margin: 3px;
+      border-radius: 20px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-action i {
+      margin-right: 5px;
+    }
+
+    .btn-info {
+      background: #17a2b8;
+      border-color: #17a2b8;
+    }
+
+    .btn-info:hover {
+      background: #138496;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    /* Modals */
     .modal-header {
-      background: #18d26e;
+      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
       color: white;
+      border-radius: 8px 8px 0 0;
+      padding: 20px 25px;
     }
 
     .modal-header .close {
       color: white;
       opacity: 1;
+      text-shadow: none;
+      font-size: 30px;
+    }
+
+    .modal-header h5 {
+      color: white;
+      font-weight: 700;
+      font-size: 20px;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .modal-header h5 i {
+      margin-right: 10px;
+      color: #18d26e;
+    }
+
+    .modal-content {
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-body {
+      padding: 35px 30px;
+    }
+
+    .modal-body .form-group label {
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-control {
+      border-radius: 8px;
+      border: 2px solid #ddd;
+      padding: 12px 18px;
+      font-size: 15px;
+      transition: all 0.3s ease;
     }
 
     .form-control:focus {
       border-color: #18d26e;
-      box-shadow: 0 0 0 0.2rem rgba(24, 210, 110, 0.25);
+      box-shadow: 0 0 15px rgba(24, 210, 110, 0.2);
+      outline: none;
     }
 
-    /* Match main site logout link */
-    .nav-menu a.logout-link {
-      color: #ff6b6b !important;
+    .modal-footer {
+      border-top: 2px solid #ecf0f1;
+      padding: 20px 30px;
+    }
+
+    /* Alerts */
+    .alert {
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      padding: 18px 25px;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border-left: 5px solid #28a745;
+    }
+
+    .alert-danger {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 5px solid #dc3545;
+    }
+
+    .alert-warning {
+      background: #fff3cd;
+      color: #856404;
+      border-left: 5px solid #ffc107;
+    }
+
+    /* Footer matching main site */
+    #footer {
+      background: #2c3e50;
+      color: #fff;
+      padding: 30px 0;
+      margin-top: 0;
+    }
+
+    #footer .copyright {
+      text-align: center;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    /* Loading and empty states */
+    .text-center {
+      padding: 50px 20px;
+      color: #7f8c8d;
+    }
+
+    .text-center i.fa-spinner {
+      color: #18d26e;
+      font-size: 32px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      #main {
+        margin-top: 60px;
+      }
+
+      .inventory-section {
+        padding: 30px 0;
+      }
+
+      .control-panel {
+        padding: 25px 20px;
+      }
+
+      .stat-box {
+        margin-bottom: 20px;
+        padding: 35px 25px;
+      }
+
+      .stat-box .icon {
+        width: 70px;
+        height: 70px;
+        font-size: 32px;
+      }
+
+      .stat-box h4 {
+        font-size: 38px;
+      }
+
+      .table {
+        font-size: 13px;
+      }
+
+      .btn-add {
+        width: 100%;
+        margin-top: 15px;
+      }
+
+      .inventory-table {
+        padding: 20px 15px;
+      }
+    }
+
+    /* Additional animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .control-panel, .stat-box, .inventory-table {
+      animation: fadeIn 0.6s ease-out;
     }
   </style>
 </head>
@@ -266,16 +599,18 @@
           </div>
           
           <div class="row stats-row">
-            <div class="col-md-6">
+            <div class="col-md-6 mb-3 mb-md-0">
               <div class="stat-box">
+                <div class="icon"><i class="fa fa-cubes"></i></div>
                 <h4 id="totalProducts">0</h4>
-                <p><i class="fa fa-cubes"></i> Total Products</p>
+                <p>Total Products</p>
               </div>
             </div>
             <div class="col-md-6">
               <div class="stat-box">
+                <div class="icon"><i class="fa fa-archive"></i></div>
                 <h4 id="totalStock">0</h4>
-                <p><i class="fa fa-archive"></i> Total Units in Stock</p>
+                <p>Total Units in Stock</p>
               </div>
             </div>
           </div>
