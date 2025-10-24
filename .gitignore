@@ -1,0 +1,26 @@
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+dundermifflin.db
+
+# PostgreSQL
+*.sql
+pgdata/
+
+# Environment variables
+.env
+
+# Go binaries
+dundermifflin
+dundermifflin.exe
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
