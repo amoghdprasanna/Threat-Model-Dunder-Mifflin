@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dunder Mifflin | Login</title>
+  <!-- <link rel="stylesheet" href="style.css"> -->
+  <style>
+    /* Reset */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      padding-left: 10%;
+      background: url('https://wallpapers.com/images/high/the-office-background-rak6btfog0un34th.webp') no-repeat right center / cover;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      backdrop-filter: blur(10px) brightness(0.7);
+      -webkit-backdrop-filter: blur(10px) brightness(0.7);
+      z-index: 0;
+    }
+
+    .login-container {
+      position: relative;
+      z-index: 1;
+      width: 360px;
+      padding: 2rem;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      text-align: center;
+    }
+
+    .login-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 380px;
+      padding: 2rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      color: #fff;
+      text-align: center;
+    }
+
+    .logo {
+      width: 180px;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .form-group {
+      text-align: left;
+      margin-bottom: 1.2rem;
+    }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+      display: block;
+      color: #f0f0f0;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.8rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: #ddd;
+    }
+
+    input:focus {
+      border: 1px solid #2ea8e6;
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    .btn-login {
+      margin-top: 0.5rem;
+      width: 100%;
+      padding: 0.9rem;
+      background: #003366;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    .btn-login:hover {
+      background: #00509e;
+    }
+
+    .btn-login:active {
+      transform: translateY(1px);
+    }
+
+    .btn-login:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    .login-footer {
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: #ddd;
+    }
+
+    .login-footer a {
+      color: #aee3ff;
+      text-decoration: none;
+    }
+
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Alert styles */
+    .alert {
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    .alert-danger {
+      background: rgba(220, 53, 69, 0.3);
+      border: 1px solid rgba(220, 53, 69, 0.5);
+      color: #fff;
+    }
+
+    .alert-success {
+      background: rgba(40, 167, 69, 0.3);
+      border: 1px solid rgba(40, 167, 69, 0.5);
+      color: #fff;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .back-link {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+    }
+
+    .back-link a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 1rem;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 50px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      transition: all 0.3s ease;
+    }
+
+    .back-link a:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding-left: 0;
+        justify-content: center;
+      }
+      
+      .login-card {
+        margin: 1rem;
+        padding: 1.5rem;
+      }
+
+      .back-link {
+        top: 10px;
+        left: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Back to Home Link -->
+  <div class="back-link">
+    <a href="index.html">← Back to Home</a>
+  </div>
+
+  <div class="login-card">
+    <!-- Logo -->
+    <img src="https://m.media-amazon.com/images/I/51MlenT-i+L._AC_.jpg" alt="Dunder Mifflin Logo" class="logo">
+
+    <h2>Employee Login</h2>
+
+    <!-- Alert Container -->
+    <div id="alertBox" class="alert"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="Enter username" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Enter password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login" id="loginBtn">Login</button>
+    </form>
+
+    <div class="login-footer">
+      © 2025 Dunder Mifflin Inc. | <a href="index.html#contact">Need Help?</a>
+    </div>
+  </div>
+
+  <script>
+    // Demo credentials for Phase 3 (hardcoded authentication)
+    // In Phase 5, this will be replaced with backend API authentication
+    const VALID_USERS = {
+      'admin': 'admin123',
+      'mscott': 'WorldsBestBoss',
+      'dwight': 'BeetFarmer123',
+      'jim': 'BigTuna',
+      'pam': 'Receptionist',
+      'ryan': 'TempLife'
+    };
+
+    /**
+     * Display alert message
+     */
+    function showAlert(message, type) {
+      const alertBox = document.getElementById('alertBox');
+      alertBox.textContent = message;
+      alertBox.className = 'alert alert-' + type;
+      alertBox.style.display = 'block';
+      
+      // Auto-hide after 5 seconds
+      setTimeout(function() {
+        alertBox.style.display = 'none';
+      }, 5000);
+    }
+
+    /**
+     * Handle login form submission
+     */
+    document.getElementById("loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      
+      // Get form values
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      const loginBtn = document.getElementById("loginBtn");
+      
+      // Basic validation
+      if (!username || !password) {
+        showAlert("Please enter both username and password.", "danger");
+        return;
+      }
+
+      // Disable button during login
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Logging in...";
+
+      // Simulate network delay (remove in production)
+      setTimeout(function() {
+        // Validate credentials
+        if (VALID_USERS[username] && VALID_USERS[username] === password) {
+          // Successful login
+          // Store session data
+          sessionStorage.setItem('user', username);
+          sessionStorage.setItem('loggedIn', 'true');
+          sessionStorage.setItem('loginTime', new Date().toISOString());
+          
+          showAlert("Welcome, " + username + "! Redirecting to inventory...", "success");
+          
+          // Redirect to inventory after 1 second
+          setTimeout(function() {
+            window.location.href = "inventory.html";
+          }, 1000);
+        } else {
+          // Failed login
+          showAlert("Invalid username or password. Try: admin / admin123", "danger");
+          
+          // Re-enable button
+          loginBtn.disabled = false;
+          loginBtn.textContent = "Login";
+          
+          // Clear password field
+          document.getElementById("password").value = "";
+        }
+      }, 500);
+    });
+
+    /**
+     * Check if user is already logged in
+     */
+    window.addEventListener('DOMContentLoaded', function() {
+      if (sessionStorage.getItem('loggedIn') === 'true') {
+        const username = sessionStorage.getItem('user');
+        showAlert("Already logged in as " + username + ". Redirecting...", "success");
+        
+        setTimeout(function() {
+          window.location.href = "inventory.html";
+        }, 1500);
+      }
+    });
+
+    /**
+     * Enter key to submit
+     */
+    document.getElementById("password").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        document.getElementById("loginForm").dispatchEvent(new Event('submit'));
+      }
+    });
+  </script>
+</body>
+
+</html>

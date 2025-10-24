@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Inventory Management - Dunder Mifflin</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <meta content="Amogh" name="author">
+
+  <!-- Favicons -->
+  <link href="img/favicon.png" rel="icon">
+  <link href="img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,700,700i|Montserrat:300,400,500,700" rel="stylesheet">
+
+  <!-- Bootstrap CSS -->
+  <link href="lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Libraries CSS -->
+  <link href="lib/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+  <link href="lib/animate/animate.min.css" rel="stylesheet">
+  <link href="lib/ionicons/css/ionicons.min.css" rel="stylesheet">
+
+  <!-- Main Stylesheet -->
+  <link href="css/style.css" rel="stylesheet">
+
+  <style>
+    /* Keep the main site styles and add inventory-specific ones */
+    #intro { display: none; } /* Hide carousel on inventory page */
+    
+    .inventory-section {
+      padding: 120px 0 60px 0;
+    }
+
+    .section-header {
+      margin-bottom: 50px;
+    }
+
+    .section-header h3 {
+      font-size: 32px;
+      color: #18d26e;
+      text-transform: uppercase;
+      text-align: center;
+      font-weight: 700;
+      position: relative;
+      padding-bottom: 15px;
+    }
+
+    .section-header h3::after {
+      content: '';
+      position: absolute;
+      display: block;
+      width: 50px;
+      height: 3px;
+      background: #18d26e;
+      bottom: 0;
+      left: calc(50% - 25px);
+    }
+
+    .section-header p {
+      text-align: center;
+      padding-bottom: 15px;
+      color: #535074;
+    }
+
+    .user-welcome {
+      text-align: center;
+      color: #18d26e;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .control-panel {
+      background: #fff;
+      padding: 30px;
+      border-radius: 4px;
+      box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+
+    .stats-row {
+      margin-top: 20px;
+    }
+
+    .stat-box {
+      background: linear-gradient(to right, #18d26e 0%, #13a456 100%);
+      padding: 25px;
+      border-radius: 4px;
+      text-align: center;
+      color: white;
+      box-shadow: 0px 2px 15px rgba(24, 210, 110, 0.3);
+    }
+
+    .stat-box h4 {
+      font-size: 36px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .stat-box p {
+      margin: 5px 0 0 0;
+      font-size: 14px;
+    }
+
+    .search-control {
+      border-radius: 4px;
+      padding: 12px 20px;
+      border: 1px solid #ddd;
+    }
+
+    .search-control:focus {
+      border-color: #18d26e;
+      box-shadow: 0 0 0 0.2rem rgba(24, 210, 110, 0.25);
+    }
+
+    .btn-add {
+      background: #18d26e;
+      border: 0;
+      padding: 12px 30px;
+      color: #fff;
+      transition: 0.4s;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .btn-add:hover {
+      background: #13a456;
+      color: #fff;
+    }
+
+    .inventory-table {
+      background: #fff;
+      padding: 25px;
+      border-radius: 4px;
+      box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .table thead th {
+      border-top: none;
+      border-bottom: 2px solid #18d26e;
+      font-weight: 600;
+      color: #413e66;
+      padding: 15px;
+    }
+
+    .table tbody td {
+      vertical-align: middle;
+      padding: 15px;
+      color: #535074;
+    }
+
+    .badge-status {
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-in-stock { background: #d4edda; color: #155724; }
+    .badge-low-stock { background: #fff3cd; color: #856404; }
+    .badge-out-stock { background: #f8d7da; color: #721c24; }
+
+    .btn-action {
+      padding: 6px 14px;
+      font-size: 12px;
+      margin: 2px;
+      border-radius: 3px;
+    }
+
+    .modal-header {
+      background: #18d26e;
+      color: white;
+    }
+
+    .modal-header .close {
+      color: white;
+      opacity: 1;
+    }
+
+    .form-control:focus {
+      border-color: #18d26e;
+      box-shadow: 0 0 0 0.2rem rgba(24, 210, 110, 0.25);
+    }
+
+    /* Match main site logout link */
+    .nav-menu a.logout-link {
+      color: #ff6b6b !important;
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    // CRITICAL: Check session FIRST before anything loads
+    (function() {
+      console.log('→ Inventory page: Checking session...');
+      const loggedIn = sessionStorage.getItem('loggedIn');
+      const user = sessionStorage.getItem('user');
+      
+      console.log('Session data:', { loggedIn, user });
+      
+      if (loggedIn !== 'true' || !user) {
+        console.log('✗ Not logged in, redirecting to login...');
+        window.location.replace('login.html');
+        throw new Error('Not authenticated'); // Stop script execution
+      }
+      
+      console.log('✓ Authenticated as:', user);
+    })();
+  </script>
+
+  <!--==========================
+    Header - Same as main site
+  ============================-->
+  <header id="header" class="header-scrolled">
+    <div class="container-fluid">
+      <div id="logo" class="pull-left">
+        <a href="index.html"><img src="img/logo.png" alt="Dunder Mifflin" /></a>
+      </div>
+
+      <nav id="nav-menu-container">
+        <ul class="nav-menu">
+          <li><a href="index.html#intro">Home</a></li>
+          <li><a href="index.html#about">About Us</a></li>
+          <li><a href="index.html#services">Services</a></li>
+          <li><a href="index.html#portfolio">Our Team</a></li>
+          <li class="menu-active"><a href="inventory.html">Inventory</a></li>
+          <li><a href="index.html#contact">Contact</a></li>
+          <li><a href="#" onclick="logout(); return false;" class="logout-link">
+            <i class="fa fa-sign-out"></i> Logout (<span id="navUsername">User</span>)
+          </a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!--==========================
+    Main Content
+  ============================-->
+  <main id="main">
+    <section class="inventory-section">
+      <div class="container">
+        <div class="section-header">
+          <h3>Inventory Management</h3>
+          <p>Manage your paper products efficiently - The Dunder Mifflin Way</p>
+          <div class="user-welcome">
+            <i class="fa fa-user"></i> Welcome, <strong id="userDisplay">Employee</strong>!
+          </div>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+          <div class="row align-items-center">
+            <div class="col-md-8 mb-3 mb-md-0">
+              <input type="text" id="searchInput" class="form-control search-control" 
+                     placeholder="🔍 Search products by name...">
+            </div>
+            <div class="col-md-4 text-right">
+              <button class="btn btn-add" data-toggle="modal" data-target="#addModal">
+                <i class="fa fa-plus"></i> Add Product
+              </button>
+            </div>
+          </div>
+          
+          <div class="row stats-row">
+            <div class="col-md-6">
+              <div class="stat-box">
+                <h4 id="totalProducts">0</h4>
+                <p><i class="fa fa-cubes"></i> Total Products</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="stat-box">
+                <h4 id="totalStock">0</h4>
+                <p><i class="fa fa-archive"></i> Total Units in Stock</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="inventory-table">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Product Name</th>
+                  <th>Description</th>
+                  <th>Quantity</th>
+                  <th>Status</th>
+                  <th>Last Updated</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr>
+                  <td colspan="7" class="text-center">
+                    <i class="fa fa-spinner fa-spin"></i> Loading inventory...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Product Modal -->
+  <div class="modal fade" id="addModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fa fa-plus-circle"></i> Add New Product</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Product Name *</label>
+            <input type="text" class="form-control" id="addName" required>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea class="form-control" id="addDesc" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Quantity *</label>
+            <input type="number" class="form-control" id="addQty" min="0" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-add" onclick="addProduct()">Add Product</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update Product Modal -->
+  <div class="modal fade" id="updateModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fa fa-edit"></i> Update Product</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="updateId">
+          <div class="form-group">
+            <label>Product Name</label>
+            <input type="text" class="form-control" id="updateName" disabled>
+          </div>
+          <div class="form-group">
+            <label>Current Quantity</label>
+            <input type="number" class="form-control" id="updateCurrentQty" disabled>
+          </div>
+          <div class="form-group">
+            <label>New Quantity *</label>
+            <input type="number" class="form-control" id="updateNewQty" min="0" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-add" onclick="updateProduct()">Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--==========================
+    Footer
+  ============================-->
+  <footer id="footer">
+    <div class="container">
+      <div class="copyright">
+        &copy; Copyright <strong>Dunder Mifflin</strong>. All Rights Reserved. Made by Amogh.
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript Libraries -->
+  <script src="lib/jquery/jquery.min.js"></script>
+  <script src="lib/jquery/jquery-migrate.min.js"></script>
+  <script src="lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="lib/easing/easing.min.js"></script>
+  <script src="lib/wow/wow.min.js"></script>
+
+  <script>
+    const currentUser = sessionStorage.getItem('user');
+    const API = 'http://localhost:3000/api/v1';
+
+    // User profiles
+    const profiles = {
+      'admin': 'Administrator',
+      'mscott': 'Michael Scott',
+      'dwight': 'Dwight Schrute',
+      'jim': 'Jim Halpert',
+      'pam': 'Pam Beesly',
+      'ryan': 'Ryan Howard'
+    };
+
+    // Display user info
+    const displayName = profiles[currentUser] || currentUser;
+    $('#navUsername').text(displayName);
+    $('#userDisplay').text(displayName);
+
+    function logout() {
+      if (confirm('Are you sure you want to logout?')) {
+        console.log('→ Logging out...');
+        sessionStorage.clear();
+        window.location.replace('login.html');
+      }
+    }
+
+    function showAlert(msg, type = 'success') {
+      const alert = `<div class="alert alert-${type} alert-dismissible fade show">
+        ${msg}<button type="button" class="close" data-dismiss="alert">&times;</button>
+      </div>`;
+      $('#alertContainer').html(alert);
+      setTimeout(() => $('#alertContainer').html(''), 5000);
+    }
+
+    function getStatusBadge(qty) {
+      if (qty === 0) return '<span class="badge badge-status badge-out-stock">Out of Stock</span>';
+      if (qty < 100) return '<span class="badge badge-status badge-low-stock">Low Stock</span>';
+      return '<span class="badge badge-status badge-in-stock">In Stock</span>';
+    }
+
+    function formatDate(d) {
+      return new Date(d).toLocaleString();
+    }
+
+    async function loadInventory(search = '') {
+      try {
+        const url = search ? `${API}/products?search=${encodeURIComponent(search)}` : `${API}/products`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.products && data.products.length > 0) {
+          let html = '';
+          let total = 0;
+
+          data.products.forEach(p => {
+            total += p.quantity;
+            html += `<tr>
+              <td>${p.product_id}</td>
+              <td><strong>${p.name}</strong></td>
+              <td>${p.description || 'N/A'}</td>
+              <td>${p.quantity}</td>
+              <td>${getStatusBadge(p.quantity)}</td>
+              <td>${formatDate(p.updated_at)}</td>
+              <td>
+                <button class="btn btn-info btn-sm btn-action" onclick='openUpdate(${p.product_id}, "${p.name.replace(/'/g, "\\\'")}", ${p.quantity})'>
+                  <i class="fa fa-edit"></i> Update
+                </button>
+                <button class="btn btn-danger btn-sm btn-action" onclick="deleteProduct(${p.product_id})">
+                  <i class="fa fa-trash"></i> Delete
+                </button>
+              </td>
+            </tr>`;
+          });
+
+          $('#tableBody').html(html);
+          $('#totalProducts').text(data.products.length);
+          $('#totalStock').text(total);
+        } else {
+          $('#tableBody').html('<tr><td colspan="7" class="text-center">No products found</td></tr>');
+          $('#totalProducts').text(0);
+          $('#totalStock').text(0);
+        }
+      } catch (e) {
+        console.error('Error:', e);
+        $('#tableBody').html('<tr><td colspan="7" class="text-center text-danger">Error loading inventory</td></tr>');
+        showAlert('Failed to load inventory', 'danger');
+      }
+    }
+
+    async function addProduct() {
+      const name = $('#addName').val().trim();
+      const description = $('#addDesc').val().trim();
+      const quantity = parseInt($('#addQty').val());
+
+      if (!name || isNaN(quantity) || quantity < 0) {
+        showAlert('Please fill all required fields correctly', 'warning');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description, quantity })
+        });
+
+        if (res.ok) {
+          showAlert('Product added successfully!');
+          $('#addModal').modal('hide');
+          $('#addName, #addDesc, #addQty').val('');
+          loadInventory();
+        } else {
+          const data = await res.json();
+          showAlert(data.error || 'Failed to add product', 'danger');
+        }
+      } catch (e) {
+        showAlert('Failed to add product', 'danger');
+      }
+    }
+
+    function openUpdate(id, name, qty) {
+      $('#updateId').val(id);
+      $('#updateName').val(name);
+      $('#updateCurrentQty').val(qty);
+      $('#updateNewQty').val(qty);
+      $('#updateModal').modal('show');
+    }
+
+    async function updateProduct() {
+      const id = $('#updateId').val();
+      const quantity = parseInt($('#updateNewQty').val());
+
+      if (isNaN(quantity) || quantity < 0) {
+        showAlert('Please enter a valid quantity', 'warning');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/products/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quantity })
+        });
+
+        if (res.ok) {
+          showAlert('Product updated successfully!');
+          $('#updateModal').modal('hide');
+          loadInventory();
+        } else {
+          showAlert('Failed to update product', 'danger');
+        }
+      } catch (e) {
+        showAlert('Failed to update product', 'danger');
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('Delete this product?')) return;
+
+      try {
+        const res = await fetch(`${API}/products/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showAlert('Product deleted successfully!');
+          loadInventory();
+        } else {
+          showAlert('Failed to delete product', 'danger');
+        }
+      } catch (e) {
+        showAlert('Failed to delete product', 'danger');
+      }
+    }
+
+    let searchTimeout;
+    $('#searchInput').on('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => loadInventory($(this).val()), 300);
+    });
+
+    $(document).ready(() => {
+      console.log('✓ Inventory page loaded for:', displayName);
+      loadInventory();
+    });
+  </script>
+</body>
+</html>
