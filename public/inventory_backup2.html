@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dunder Mifflin | Inventory Management</title>
+  
+  <!-- Favicons -->
+  <link href="img/favicon.png" rel="icon">
+  <link href="img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,700,700i|Montserrat:300,400,500,700" rel="stylesheet">
+
+  <!-- Bootstrap CSS File -->
+  <link href="lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Libraries CSS Files -->
+  <link href="lib/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+  <link href="lib/animate/animate.min.css" rel="stylesheet">
+  <link href="lib/ionicons/css/ionicons.min.css" rel="stylesheet">
+
+  <!-- Main Stylesheet File -->
+  <link href="css/style.css" rel="stylesheet">
+
+  <style>
+    /* CRITICAL: Force header to use home page styling */
+    #header {
+      background: #15384E !important; /* Exact color from home page CSS */
+      padding: 20px 0 !important;
+      height: 80px !important;
+    }
+
+    /* Ensure navigation stays styled correctly */
+    #header .nav-menu a {
+      color: #FFF !important;
+    }
+
+    #header .nav-menu li:hover > a,
+    #header .nav-menu > .menu-active > a {
+      color: #CFDDED !important; /* Light blue from home page */
+    }
+
+    /* Override body for inventory page */
+    body {
+      padding-top: 95px;
+      background: #f5f7fa;
+      color: #666666;
+      font-family: "Open Sans", sans-serif;
+    }
+
+    /* Inventory Page Container */
+    .inventory-wrapper {
+      max-width: 1400px;
+      margin: 25px auto;
+      padding: 0 20px;
+    }
+
+    /* Top Bar with User Info - Using home page dark blue */
+    .inventory-top-bar {
+      background: linear-gradient(135deg, #15384E 0%, #1e5378 100%);
+      border-radius: 12px;
+      padding: 30px 40px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 25px;
+      box-shadow: 0 8px 24px rgba(21, 56, 78, 0.25);
+    }
+
+    .inventory-title {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: white;
+    }
+
+    .inventory-title i {
+      font-size: 2.8rem;
+      opacity: 0.95;
+    }
+
+    .inventory-title h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0;
+      font-family: 'Montserrat', sans-serif;
+      letter-spacing: -0.5px;
+    }
+
+    /* User Profile Section - Modern Design */
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .profile-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.6rem;
+      font-weight: 700;
+      border: 3px solid rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    .profile-avatar:hover {
+      transform: scale(1.05);
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .profile-info {
+      color: white;
+    }
+
+    .profile-name {
+      font-weight: 600;
+      font-size: 1.15rem;
+      margin-bottom: 4px;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .profile-role {
+      background: linear-gradient(135deg, rgba(207, 221, 237, 0.25), rgba(207, 221, 237, 0.15));
+      padding: 5px 14px;
+      border-radius: 16px;
+      font-size: 0.875rem;
+      display: inline-block;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      font-weight: 500;
+    }
+
+    .btn-logout {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      color: white;
+      padding: 11px 28px;
+      border-radius: 28px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      font-family: 'Montserrat', sans-serif;
+      backdrop-filter: blur(10px);
+      font-size: 0.95rem;
+    }
+
+    .btn-logout:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Main Content Card */
+    .inventory-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+    }
+
+    /* Tabs - Using home page color scheme */
+    .inventory-tabs {
+      display: flex;
+      background: #f8f9fc;
+      border-bottom: 3px solid #e8ecf2;
+      padding: 0;
+      margin: 0;
+    }
+
+    .inventory-tab {
+      padding: 20px 40px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #666666;
+      transition: all 0.3s ease;
+      position: relative;
+      font-family: 'Montserrat', sans-serif;
+      flex: 1;
+      text-align: center;
+    }
+
+    .inventory-tab:hover {
+      background: rgba(21, 56, 78, 0.04);
+      color: #15384E;
+    }
+
+    .inventory-tab.active {
+      color: #15384E;
+      background: white;
+    }
+
+    .inventory-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -3px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #15384E;
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+      padding: 40px;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Alert Messages */
+    .alert {
+      padding: 16px 22px;
+      border-radius: 10px;
+      margin-bottom: 28px;
+      display: none;
+      animation: slideDown 0.3s ease;
+      border-left: 5px solid;
+      font-weight: 500;
+    }
+
+    .alert-success {
+      background: linear-gradient(135deg, #d4edda, #c3e6cb);
+      border-left-color: #28a745;
+      color: #155724;
+    }
+
+    .alert-danger {
+      background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+      border-left-color: #dc3545;
+      color: #721c24;
+    }
+
+    .alert-warning {
+      background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+      border-left-color: #ffc107;
+      color: #856404;
+    }
+
+    .alert-info {
+      background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+      border-left-color: #17a2b8;
+      color: #0c5460;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Section Headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid #e8ecf2;
+    }
+
+    .section-header i {
+      color: #15384E;
+      font-size: 2rem;
+    }
+
+    .section-header h2 {
+      color: #333;
+      font-size: 1.7rem;
+      font-weight: 700;
+      margin: 0;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    /* Forms */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 22px;
+      margin-bottom: 28px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: #333;
+      font-size: 0.97rem;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 13px 16px;
+      border: 2px solid #e8ecf2;
+      border-radius: 10px;
+      font-size: 0.97rem;
+      font-family: 'Open Sans', sans-serif;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #15384E;
+      box-shadow: 0 0 0 4px rgba(21, 56, 78, 0.1);
+      background: #f8f9fc;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 110px;
+    }
+
+    /* Buttons - Using home page color */
+    .btn {
+      padding: 13px 30px;
+      border: none;
+      border-radius: 28px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.97rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #15384E, #0d2433);
+      color: white;
+      box-shadow: 0 4px 14px rgba(21, 56, 78, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: #0d2433;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(21, 56, 78, 0.45);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #218838);
+      color: white;
+      box-shadow: 0 4px 14px rgba(40, 167, 69, 0.35);
+    }
+
+    .btn-success:hover {
+      background: linear-gradient(135deg, #218838, #1e7e34);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(40, 167, 69, 0.45);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      box-shadow: 0 4px 14px rgba(220, 53, 69, 0.35);
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #c82333, #bd2130);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(220, 53, 69, 0.45);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #000;
+      box-shadow: 0 4px 14px rgba(255, 193, 7, 0.35);
+    }
+
+    .btn-warning:hover {
+      background: linear-gradient(135deg, #e0a800, #d39e00);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(255, 193, 7, 0.45);
+    }
+
+    .btn-sm {
+      padding: 9px 18px;
+      font-size: 0.9rem;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Search & Filter Bar */
+    .filter-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      padding: 22px;
+      background: linear-gradient(135deg, #f8f9fc, #f0f2f8);
+      border-radius: 10px;
+      border: 1px solid #e8ecf2;
+    }
+
+    .filter-bar input,
+    .filter-bar select {
+      padding: 13px 16px;
+      border: 2px solid #e8ecf2;
+      border-radius: 10px;
+      font-family: 'Open Sans', sans-serif;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .filter-bar input {
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .filter-bar input:focus,
+    .filter-bar select:focus {
+      outline: none;
+      border-color: #15384E;
+      box-shadow: 0 0 0 4px rgba(21, 56, 78, 0.1);
+    }
+
+    /* Table - Using home page dark blue */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid #e8ecf2;
+      margin-top: 22px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #15384E;
+      color: white;
+    }
+
+    th {
+      padding: 18px 20px;
+      text-align: left;
+      font-weight: 700;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.3px;
+    }
+
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e8ecf2;
+      font-size: 0.95rem;
+      color: #666666;
+    }
+
+    tbody tr {
+      transition: all 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background: linear-gradient(135deg, #f8f9fc, #f5f7fa);
+      transform: translateX(2px);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Stock Status Badges */
+    .stock-status {
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: inline-block;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .in-stock {
+      background: linear-gradient(135deg, #d4edda, #c3e6cb);
+      color: #155724;
+    }
+
+    .low-stock {
+      background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+      color: #856404;
+    }
+
+    .out-of-stock {
+      background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+      color: #721c24;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 38px;
+      max-width: 560px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal h2 {
+      margin-bottom: 28px;
+      color: #15384E;
+      font-family: 'Montserrat', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: flex-end;
+      margin-top: 28px;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d, #5a6268);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #5a6268, #545b62);
+      transform: translateY(-2px);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 70px 24px;
+      color: #666666;
+    }
+
+    .empty-state i {
+      font-size: 4.5rem;
+      color: #cbd5e0;
+      margin-bottom: 18px;
+      opacity: 0.7;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 12px;
+      font-size: 1.6rem;
+      color: #333;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+    }
+
+    .empty-state p {
+      color: #666666;
+      font-size: 1rem;
+    }
+
+    /* Add Product Section */
+    .add-product-section {
+      background: linear-gradient(135deg, #f8f9fc 0%, #f0f2f8 100%);
+      padding: 32px;
+      border-radius: 12px;
+      margin-bottom: 32px;
+      border: 3px dashed #15384E;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding-top: 80px;
+      }
+
+      .inventory-top-bar {
+        padding: 22px 24px;
+      }
+
+      .inventory-title h1 {
+        font-size: 1.6rem;
+      }
+
+      .inventory-title i {
+        font-size: 2.2rem;
+      }
+
+      .tab-content {
+        padding: 24px;
+      }
+
+      .inventory-tab {
+        padding: 16px 18px;
+        font-size: 0.95rem;
+      }
+
+      .filter-bar {
+        flex-direction: column;
+        padding: 18px;
+      }
+
+      .filter-bar input,
+      .filter-bar select {
+        width: 100%;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .profile-avatar {
+        width: 50px;
+        height: 50px;
+        font-size: 1.4rem;
+      }
+
+      .table-container {
+        font-size: 0.9rem;
+      }
+
+      th, td {
+        padding: 12px 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!--==========================
+    Header (Matching home page exactly)
+  ============================-->
+  <header id="header" class="header-scrolled">
+    <div class="container-fluid">
+      <div id="logo" class="pull-left">
+        <a href="index.html"><img src="img/logo.png" alt="" title="Dunder Mifflin Logo" /></a>
+      </div>
+
+      <nav id="nav-menu-container">
+        <ul class="nav-menu">
+          <li><a href="index.html#intro">HOME</a></li>
+          <li><a href="index.html#about">ABOUT US</a></li>
+          <li><a href="index.html#services">SERVICES</a></li>
+          <li><a href="index.html#portfolio">OUR TEAM</a></li>
+          <li class="menu-active"><a href="inventory.html">INVENTORY</a></li>
+          <li><a href="index.html#contact">CONTACT</a></li>
+        </ul>
+      </nav><!-- #nav-menu-container -->
+    </div>
+  </header><!-- #header -->
+
+  <!--==========================
+    Inventory Management Section
+  ============================-->
+  <div class="inventory-wrapper">
+    <!-- Top Bar with User Profile -->
+    <div class="inventory-top-bar">
+      <div class="inventory-title">
+        <i class="ion-cube"></i>
+        <h1>Inventory Management</h1>
+      </div>
+      
+      <div class="user-profile">
+        <div class="profile-avatar" id="profileAvatar" title="User Profile">
+          <i class="ion-person"></i>
+        </div>
+        <div class="profile-info">
+          <div class="profile-name" id="userDisplay">Loading...</div>
+          <div class="profile-role" id="roleDisplay">-</div>
+        </div>
+        <button class="btn-logout" onclick="handleLogout()">
+          <i class="ion-log-out"></i> Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="inventory-card">
+      <!-- Tabs -->
+      <div class="inventory-tabs">
+        <button class="inventory-tab active" onclick="switchTab('products')">
+          <i class="ion-ios-list"></i> Products
+        </button>
+        <button class="inventory-tab" onclick="switchTab('alerts')">
+          <i class="ion-ios-alert"></i> Low Stock Alerts
+        </button>
+        <button class="inventory-tab" onclick="switchTab('audit')">
+          <i class="ion-ios-clock"></i> Audit Logs
+        </button>
+      </div>
+
+      <!-- Products Tab -->
+      <div id="productsTab" class="tab-content active">
+        <div id="productsAlertBox" class="alert"></div>
+
+        <!-- Add Product Form -->
+        <div id="addProductSection" class="add-product-section" style="display: none;">
+          <div class="section-header">
+            <i class="ion-plus-circled"></i>
+            <h2>Add New Product</h2>
+          </div>
+          
+          <form id="addProductForm">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="sku">SKU *</label>
+                <input type="text" id="sku" required placeholder="e.g., SKU-001">
+              </div>
+              <div class="form-group">
+                <label for="name">Product Name *</label>
+                <input type="text" id="name" required placeholder="Enter product name">
+              </div>
+              <div class="form-group">
+                <label for="category">Category *</label>
+                <input type="text" id="category" required placeholder="e.g., Office Supplies">
+              </div>
+              <div class="form-group">
+                <label for="quantity">Quantity *</label>
+                <input type="number" id="quantity" min="0" required placeholder="0">
+              </div>
+              <div class="form-group">
+                <label for="low_stock_threshold">Low Stock Threshold *</label>
+                <input type="number" id="low_stock_threshold" min="0" required placeholder="10">
+              </div>
+              <div class="form-group">
+                <label for="price">Price ($)</label>
+                <input type="number" id="price" min="0" step="0.01" placeholder="0.00">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea id="description" placeholder="Enter product description..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-success">
+              <i class="ion-checkmark-circled"></i> Add Product
+            </button>
+          </form>
+        </div>
+
+        <!-- Product List -->
+        <div class="section-header" style="margin-top: 32px;">
+          <i class="ion-ios-box"></i>
+          <h2>Product Inventory</h2>
+        </div>
+        
+        <div class="filter-bar">
+          <input type="text" id="searchInput" placeholder="🔍 Search products by name, SKU, or category...">
+          <select id="categoryFilter">
+            <option value="">All Categories</option>
+          </select>
+          <select id="stockFilter">
+            <option value="">All Stock Levels</option>
+            <option value="out">Out of Stock Only</option>
+          </select>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Threshold</th>
+                <th>Status</th>
+                <th>Price</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsBody">
+              <tr>
+                <td colspan="8">
+                  <div class="empty-state">
+                    <i class="ion-load-c"></i>
+                    <h3>Loading products...</h3>
+                    <p>Please wait while we fetch your inventory</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Alerts Tab -->
+      <div id="alertsTabContent" class="tab-content">
+        <div id="alertsAlertBox" class="alert"></div>
+        
+        <div class="section-header">
+          <i class="ion-ios-alert"></i>
+          <h2>Low Stock Alerts</h2>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Current Qty</th>
+                <th>Threshold</th>
+                <th>Severity</th>
+                <th>Created At</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="alertsBody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <i class="ion-load-c"></i>
+                    <h3>Loading alerts...</h3>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Audit Logs Tab -->
+      <div id="auditTabContent" class="tab-content">
+        <div id="auditAlertBox" class="alert"></div>
+        
+        <div class="section-header">
+          <i class="ion-ios-paper"></i>
+          <h2>Audit Trail</h2>
+        </div>
+
+        <div class="filter-bar">
+          <select id="actionFilter" onchange="loadAuditLogs()">
+            <option value="">All Actions</option>
+            <option value="LOGIN">Login</option>
+            <option value="LOGOUT">Logout</option>
+            <option value="CREATE_PRODUCT">Create Product</option>
+            <option value="UPDATE_PRODUCT">Update Product</option>
+            <option value="DELETE_PRODUCT">Delete Product</option>
+          </select>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Details</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="auditBody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <i class="ion-load-c"></i>
+                    <h3>Loading audit logs...</h3>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update Modal -->
+  <div id="updateModal" class="modal-overlay" onclick="if(event.target === this) closeModal()">
+    <div class="modal">
+      <h2>
+        <i class="ion-edit"></i>
+        Update Product Quantity
+      </h2>
+      <form id="updateQuantityForm">
+        <input type="hidden" id="updateProductId">
+        <input type="hidden" id="updateVersion">
+        
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="updateProductName" disabled style="background: #f8f9fc;">
+        </div>
+        
+        <div class="form-group">
+          <label>Current Quantity</label>
+          <input type="number" id="updateCurrentQty" disabled style="background: #f8f9fc;">
+        </div>
+        
+        <div class="form-group">
+          <label>New Quantity *</label>
+          <input type="number" id="updateNewQty" min="0" required>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">
+            <i class="ion-close-circled"></i> Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="ion-checkmark-circled"></i> Update
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Libraries -->
+  <script src="lib/jquery/jquery.min.js"></script>
+  <script src="lib/jquery/jquery-migrate.min.js"></script>
+  <script src="lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="lib/easing/easing.min.js"></script>
+  <script src="lib/superfish/hoverIntent.js"></script>
+  <script src="lib/superfish/superfish.min.js"></script>
+  <script src="lib/wow/wow.min.js"></script>
+  <script src="js/main.js"></script>
+
+  <script>
+    const API_BASE = '/api/v1';
+    let products = [];
+    let categories = new Set();
+    let currentRole = '';
+    let currentUsername = '';
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async function() {
+      await checkAuth();
+      loadProducts();
+    });
+
+    // Check authentication
+    async function checkAuth() {
+      try {
+        const response = await fetch(API_BASE + '/auth/me', {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const data = await response.json();
+        currentUsername = data.username;
+        currentRole = data.role;
+        
+        // Set profile display
+        document.getElementById('userDisplay').textContent = data.username;
+        document.getElementById('roleDisplay').textContent = data.role;
+        
+        // Set profile avatar with first letter of username
+        const avatarElement = document.getElementById('profileAvatar');
+        avatarElement.textContent = data.username.charAt(0).toUpperCase();
+        avatarElement.title = `${data.username} (${data.role})`;
+
+        // Show add product section for authorized roles
+        if (['Warehouse Employee', 'Warehouse Manager', 'Administrator'].includes(currentRole)) {
+          document.getElementById('addProductSection').style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = 'login.html';
+      }
+    }
+
+    // API Call Helper
+    async function apiCall(endpoint, options = {}) {
+      try {
+        const response = await fetch(API_BASE + endpoint, {
+          ...options,
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        });
+
+        if (response.status === 401) {
+          window.location.href = 'login.html';
+          return null;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
+
+        return data;
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // Show Alert
+    function showAlert(message, type = 'info', elementId = 'productsAlertBox') {
+      const alertBox = document.getElementById(elementId);
+      const icons = { success: '✓', danger: '✗', warning: '⚠', info: 'ℹ' };
+      alertBox.className = `alert alert-${type}`;
+      alertBox.innerHTML = `<strong>${icons[type] || 'ℹ'}</strong> ${message}`;
+      alertBox.style.display = 'block';
+
+      setTimeout(() => {
+        alertBox.style.display = 'none';
+      }, 5000);
+    }
+
+    // Load products
+    async function loadProducts() {
+      try {
+        const search = document.getElementById('searchInput').value;
+        const category = document.getElementById('categoryFilter').value;
+        const stockFilter = document.getElementById('stockFilter').value;
+
+        let url = '/products?';
+        if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (category) url += `category=${encodeURIComponent(category)}&`;
+
+        const data = await apiCall(url);
+        if (!data) return;
+
+        products = data.products || [];
+        
+        // Update categories
+        categories.clear();
+        products.forEach(p => categories.add(p.category));
+        updateCategoryFilter();
+
+        // Filter out of stock if needed
+        let displayProducts = products;
+        if (stockFilter === 'out') {
+          displayProducts = products.filter(p => p.quantity === 0);
+        }
+
+        displayProductsTable(displayProducts);
+      } catch (error) {
+        showAlert('Failed to load products: ' + error.message, 'danger');
+      }
+    }
+
+    function updateCategoryFilter() {
+      const select = document.getElementById('categoryFilter');
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">All Categories</option>';
+      [...categories].sort().forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+      });
+      select.value = currentValue;
+    }
+
+    function displayProductsTable(productList) {
+      const tbody = document.getElementById('productsBody');
+      
+      if (productList.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <i class="ion-ios-search"></i>
+                <h3>No products found</h3>
+                <p>Try adjusting your search or filters</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = productList.map(product => {
+        const status = getStockStatus(product);
+        const canEdit = ['Warehouse Employee', 'Warehouse Manager', 'Administrator'].includes(currentRole);
+        const canDelete = ['Warehouse Manager', 'Administrator'].includes(currentRole);
+
+        return `
+          <tr>
+            <td><strong>${escapeHtml(product.sku)}</strong></td>
+            <td>${escapeHtml(product.name)}</td>
+            <td><span style="color: #15384E; font-weight: 600;">${escapeHtml(product.category)}</span></td>
+            <td><strong>${product.quantity}</strong></td>
+            <td>${product.low_stock_threshold}</td>
+            <td><span class="stock-status ${status.class}">${status.text}</span></td>
+            <td><strong>$${(product.price || 0).toFixed(2)}</strong></td>
+            <td class="action-buttons">
+              ${canEdit ? `<button class="btn btn-primary btn-sm" onclick="openUpdateModal(${product.product_id}, '${escapeHtml(product.name)}', ${product.quantity}, ${product.version})"><i class="ion-edit"></i> Update</button>` : ''}
+              ${canDelete ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.product_id}, '${escapeHtml(product.name)}')"><i class="ion-trash-a"></i> Delete</button>` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function getStockStatus(product) {
+      if (product.quantity === 0) {
+        return { class: 'out-of-stock', text: 'Out of Stock' };
+      } else if (product.quantity <= product.low_stock_threshold) {
+        return { class: 'low-stock', text: 'Low Stock' };
+      } else {
+        return { class: 'in-stock', text: 'In Stock' };
+      }
+    }
+
+    // Add product
+    document.getElementById('addProductForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const productData = {
+        sku: document.getElementById('sku').value.trim(),
+        name: document.getElementById('name').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        category: document.getElementById('category').value.trim(),
+        quantity: parseInt(document.getElementById('quantity').value),
+        low_stock_threshold: parseInt(document.getElementById('low_stock_threshold').value),
+        price: parseFloat(document.getElementById('price').value) || 0
+      };
+
+      try {
+        await apiCall('/products', {
+          method: 'POST',
+          body: JSON.stringify(productData)
+        });
+
+        showAlert('✓ Product added successfully!', 'success');
+        this.reset();
+        loadProducts();
+      } catch (error) {
+        showAlert('Failed to add product: ' + error.message, 'danger');
+      }
+    });
+
+    // Update product
+    function openUpdateModal(productId, name, quantity, version) {
+      document.getElementById('updateProductId').value = productId;
+      document.getElementById('updateProductName').value = name;
+      document.getElementById('updateCurrentQty').value = quantity;
+      document.getElementById('updateNewQty').value = quantity;
+      document.getElementById('updateVersion').value = version;
+      document.getElementById('updateModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('updateModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('updateQuantityForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const productId = document.getElementById('updateProductId').value;
+      const newQty = parseInt(document.getElementById('updateNewQty').value);
+      const version = parseInt(document.getElementById('updateVersion').value);
+
+      try {
+        await apiCall(`/products/${productId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ quantity: newQty, version: version })
+        });
+
+        showAlert('✓ Quantity updated successfully!', 'success');
+        closeModal();
+        loadProducts();
+      } catch (error) {
+        showAlert('Failed to update quantity: ' + error.message, 'danger');
+      }
+    });
+
+    // Delete product
+    async function deleteProduct(productId, name) {
+      if (!confirm(`Are you sure you want to delete "${name}"?\n\nThis action cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        await apiCall(`/products/${productId}`, {
+          method: 'DELETE'
+        });
+
+        showAlert('✓ Product deleted successfully!', 'success');
+        loadProducts();
+      } catch (error) {
+        showAlert('Failed to delete product: ' + error.message, 'danger');
+      }
+    }
+
+    // Load alerts
+    async function loadAlerts() {
+      try {
+        const data = await apiCall('/alerts');
+        if (!data) return;
+
+        const tbody = document.getElementById('alertsBody');
+        const alerts = data.alerts || [];
+
+        if (alerts.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <i class="ion-checkmark-circled"></i>
+                  <h3>No low stock alerts</h3>
+                  <p>All products are adequately stocked!</p>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = alerts.map(alert => `
+          <tr>
+            <td><strong>${escapeHtml(alert.product_name)}</strong></td>
+            <td><strong>${alert.current_qty}</strong></td>
+            <td>${alert.threshold}</td>
+            <td><span class="stock-status ${alert.severity === 'CRITICAL' ? 'out-of-stock' : 'low-stock'}">${alert.severity}</span></td>
+            <td>${new Date(alert.created_at).toLocaleString()}</td>
+            <td>
+              ${!alert.acknowledged 
+                ? `<button class="btn btn-warning btn-sm" onclick="acknowledgeAlert(${alert.alert_id})"><i class="ion-checkmark"></i> Acknowledge</button>` 
+                : '<span style="color: #28a745; font-weight: 600;"><i class="ion-checkmark-circled"></i> Acknowledged</span>'}
+            </td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        showAlert('Failed to load alerts: ' + error.message, 'danger', 'alertsAlertBox');
+      }
+    }
+
+    async function acknowledgeAlert(alertId) {
+      try {
+        await apiCall(`/alerts/${alertId}/acknowledge`, {
+          method: 'POST'
+        });
+        showAlert('✓ Alert acknowledged successfully!', 'success', 'alertsAlertBox');
+        loadAlerts();
+      } catch (error) {
+        showAlert('Failed to acknowledge alert: ' + error.message, 'danger', 'alertsAlertBox');
+      }
+    }
+
+    // Load audit logs
+    async function loadAuditLogs() {
+      try {
+        const action = document.getElementById('actionFilter').value;
+        let url = '/audit-logs?page_size=50';
+        if (action) url += `&action=${action}`;
+
+        const data = await apiCall(url);
+        if (!data) return;
+
+        const tbody = document.getElementById('auditBody');
+        const logs = data.logs || [];
+
+        if (logs.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <i class="ion-ios-paper"></i>
+                  <h3>No audit logs found</h3>
+                  <p>No activity recorded for the selected filters</p>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = logs.map(log => `
+          <tr>
+            <td>${new Date(log.timestamp).toLocaleString()}</td>
+            <td><strong>${escapeHtml(log.username)}</strong></td>
+            <td><span style="color: #15384E; font-weight: 600;">${log.action}</span></td>
+            <td>${escapeHtml(log.entity_type) || '-'}</td>
+            <td>${log.old_value ? `${escapeHtml(log.old_value)} → ${escapeHtml(log.new_value)}` : escapeHtml(log.new_value) || '-'}</td>
+            <td><span class="stock-status ${log.success ? 'in-stock' : 'out-of-stock'}">${log.success ? 'Success' : 'Failed'}</span></td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        showAlert('Failed to load audit logs: ' + error.message, 'danger', 'auditAlertBox');
+      }
+    }
+
+    // Tab switching
+    function switchTab(tabName) {
+      document.querySelectorAll('.inventory-tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      if (tabName === 'products') {
+        document.getElementById('productsTab').classList.add('active');
+        loadProducts();
+      } else if (tabName === 'alerts') {
+        document.getElementById('alertsTabContent').classList.add('active');
+        loadAlerts();
+      } else if (tabName === 'audit') {
+        document.getElementById('auditTabContent').classList.add('active');
+        loadAuditLogs();
+      }
+    }
+
+    // Logout
+    async function handleLogout() {
+      if (!confirm('Are you sure you want to logout?')) return;
+      try {
+        await apiCall('/auth/logout', { method: 'POST' });
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+      }
+    }
+
+    // Event listeners
+    document.getElementById('searchInput').addEventListener('input', debounce(loadProducts, 500));
+    document.getElementById('categoryFilter').addEventListener('change', loadProducts);
+    document.getElementById('stockFilter').addEventListener('change', loadProducts);
+
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>

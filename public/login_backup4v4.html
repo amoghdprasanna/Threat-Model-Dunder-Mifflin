@@ -5,7 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dunder Mifflin | Login</title>
-  <!-- <link rel="stylesheet" href="style.css"> -->
   <style>
     /* Reset */
     * {
@@ -304,25 +303,40 @@
       loginBtn.disabled = true;
       loginBtn.textContent = "Logging in...";
 
-      // Simulate network delay (remove in production)
+      // Simulate network delay
       setTimeout(function() {
         // Validate credentials
         if (VALID_USERS[username] && VALID_USERS[username] === password) {
           // Successful login
+          console.log('✓ Login successful for:', username);
+          
+          // Clear any existing session first
+          sessionStorage.clear();
+          
           // Store session data
           sessionStorage.setItem('user', username);
           sessionStorage.setItem('loggedIn', 'true');
           sessionStorage.setItem('loginTime', new Date().toISOString());
           
+          // Verify storage was successful
+          const verify = {
+            user: sessionStorage.getItem('user'),
+            loggedIn: sessionStorage.getItem('loggedIn'),
+            loginTime: sessionStorage.getItem('loginTime')
+          };
+          console.log('✓ Session stored:', verify);
+          
           showAlert("Welcome, " + username + "! Redirecting to inventory...", "success");
           
           // Redirect to inventory after 1 second
           setTimeout(function() {
-            window.location.href = "inventory.html";
+            console.log('→ Redirecting to inventory...');
+            window.location.replace("inventory.html");
           }, 1000);
         } else {
           // Failed login
-          showAlert("Invalid username or password. Try: admin / admin123", "danger");
+          console.log('✗ Login failed for:', username);
+          showAlert("Invalid username or password!");
           
           // Re-enable button
           loginBtn.disabled = false;
