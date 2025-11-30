@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
@@ -36,6 +38,22 @@ type Product struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 	CreatedBy         uint      `json:"created_by"`
 	UpdatedBy         uint      `json:"updated_by"`
+}
+
+// NEW: ProductMove model for tracking inventory movements
+type ProductMove struct {
+	MoveID      uint      `gorm:"primaryKey" json:"move_id"`
+	ProductID   uint      `gorm:"not null;index" json:"product_id"`
+	ProductName string    `json:"product_name"`
+	MoveType    string    `gorm:"not null;index" json:"move_type"` // IN, OUT, ADJUSTMENT
+	Quantity    int       `gorm:"not null" json:"quantity"`
+	OldQuantity int       `json:"old_quantity"`
+	NewQuantity int       `json:"new_quantity"`
+	Reason      string    `json:"reason"`
+	UserID      uint      `gorm:"index" json:"user_id"`
+	Username    string    `json:"username"`
+	IPAddress   string    `json:"ip_address"`
+	Timestamp   time.Time `gorm:"not null;index" json:"timestamp"`
 }
 
 // User model with password hashing
@@ -116,6 +134,13 @@ const (
 	RoleAssociate = "Sales Associate"
 )
 
+// Move type constants
+const (
+	MoveTypeIN         = "IN"
+	MoveTypeOUT        = "OUT"
+	MoveTypeADJUSTMENT = "ADJUSTMENT"
+)
+
 // ============================================================================
 // DATABASE INITIALIZATION
 // ============================================================================
@@ -145,8 +170,8 @@ func InitDatabase() error {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	// Auto-migrate models
-	err = DB.AutoMigrate(&Product{}, &User{}, &Session{}, &AuditLog{}, &LowStockAlert{})
+	// Auto-migrate models (including new ProductMove model)
+	err = DB.AutoMigrate(&Product{}, &User{}, &Session{}, &AuditLog{}, &LowStockAlert{}, &ProductMove{})
 	if err != nil {
 		return err
 	}
@@ -155,8 +180,11 @@ func InitDatabase() error {
 	DB.Exec("CREATE INDEX IF NOT EXISTS idx_products_quantity ON products(quantity)")
 	DB.Exec("CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)")
 	DB.Exec("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
+	DB.Exec("CREATE INDEX IF NOT EXISTS idx_product_moves_product_id ON product_moves(product_id)")
+	DB.Exec("CREATE INDEX IF NOT EXISTS idx_product_moves_timestamp ON product_moves(timestamp DESC)")
 
 	log.Println("✓ Database connected and migrated successfully (PostgreSQL)")
+	log.Println("✓ ProductMove tracking system initialized")
 	return nil
 }
 
@@ -275,22 +303,22 @@ func RoleMiddleware(allowedRoles ...string) fiber.Handler {
 			}
 		}
 
-		LogAudit(user.UserID, user.Username, "ACCESS_DENIED", "Route", 0, "", "", c.IP(), false, "Insufficient permissions")
+		LogAudit(user.UserID, user.Username, "ACCESS_DENIED", "", 0, "", "", c.IP(), false, "Insufficient permissions")
 
 		return c.Status(403).JSON(fiber.Map{
-			"error":          "You do not have permission to perform this action",
-			"code":           "FORBIDDEN",
-			"required_roles": allowedRoles,
+			"error": "Insufficient permissions",
+			"code":  "FORBIDDEN",
 		})
 	}
 }
 
 // ============================================================================
-// AUDIT LOGGING (FR-005)
+// HELPER FUNCTIONS
 // ============================================================================
 
+// LogAudit creates an audit log entry
 func LogAudit(userID uint, username, action, entityType string, entityID uint, oldValue, newValue, ipAddress string, success bool, errorMsg string) {
-	audit := AuditLog{
+	log := AuditLog{
 		UserID:     userID,
 		Username:   username,
 		Action:     action,
@@ -303,67 +331,43 @@ func LogAudit(userID uint, username, action, entityType string, entityID uint, o
 		Success:    success,
 		ErrorMsg:   errorMsg,
 	}
-	DB.Create(&audit)
+	DB.Create(&log)
+}
+
+// NEW: RecordProductMove - Track inventory movement
+func RecordProductMove(productID uint, productName string, moveType string, quantity, oldQty, newQty int, reason string, userID uint, username, ipAddress string) {
+	move := ProductMove{
+		ProductID:   productID,
+		ProductName: productName,
+		MoveType:    moveType,
+		Quantity:    quantity,
+		OldQuantity: oldQty,
+		NewQuantity: newQty,
+		Reason:      reason,
+		UserID:      userID,
+		Username:    username,
+		IPAddress:   ipAddress,
+		Timestamp:   time.Now(),
+	}
+
+	if err := DB.Create(&move).Error; err != nil {
+		log.Printf("⚠️  Failed to record product move: %v", err)
+	} else {
+		log.Printf("📦 Recorded %s movement for %s: %d → %d (Qty change: %d)",
+			moveType, productName, oldQty, newQty, quantity)
+	}
 }
 
 // ============================================================================
-// VALIDATION FUNCTIONS (NFR-001)
+// AUTHENTICATION ROUTES
 // ============================================================================
-
-type ValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
-
-func ValidateProduct(product *Product) []ValidationError {
-	var errors []ValidationError
-
-	// Required fields
-	if strings.TrimSpace(product.Name) == "" {
-		errors = append(errors, ValidationError{Field: "name", Message: "Product name is required"})
-	}
-	if len(product.Name) > MaxNameLength {
-		errors = append(errors, ValidationError{Field: "name", Message: "Name must be 200 characters or less"})
-	}
-	if len(product.Description) > MaxDescriptionLength {
-		errors = append(errors, ValidationError{Field: "description", Message: "Description must be 500 characters or less"})
-	}
-	if strings.TrimSpace(product.SKU) == "" {
-		errors = append(errors, ValidationError{Field: "sku", Message: "SKU is required"})
-	}
-	if strings.TrimSpace(product.Category) == "" {
-		errors = append(errors, ValidationError{Field: "category", Message: "Category is required"})
-	}
-	if product.Quantity < 0 {
-		errors = append(errors, ValidationError{Field: "quantity", Message: "Quantity cannot be negative"})
-	}
-	if product.Quantity > MaxQuantity {
-		errors = append(errors, ValidationError{Field: "quantity", Message: "Quantity exceeds maximum allowed"})
-	}
-	if product.LowStockThreshold < 0 {
-		errors = append(errors, ValidationError{Field: "low_stock_threshold", Message: "Threshold cannot be negative"})
-	}
-
-	return errors
-}
-
-// ============================================================================
-// AUTHENTICATION ROUTES (NFR-003)
-// ============================================================================
-
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type LoginResponse struct {
-	SessionID string    `json:"session_id"`
-	User      User      `json:"user"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
 
 func Login(c *fiber.Ctx) error {
-	var req LoginRequest
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "Invalid request body",
@@ -372,19 +376,18 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	// Validate input
-	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" {
+	if req.Username == "" || req.Password == "" {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "Username and password are required",
-			"code":  "MISSING_CREDENTIALS",
+			"code":  "VALIDATION_ERROR",
 		})
 	}
 
-	// Find user
 	var user User
 	if err := DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		LogAudit(0, req.Username, "LOGIN_FAILED", "User", 0, "", "", c.IP(), false, "User not found")
+		LogAudit(0, req.Username, "LOGIN", "User", 0, "", "", c.IP(), false, "User not found")
 		return c.Status(401).JSON(fiber.Map{
-			"error": "Invalid username or password",
+			"error": "Invalid credentials",
 			"code":  "INVALID_CREDENTIALS",
 		})
 	}
@@ -392,91 +395,80 @@ func Login(c *fiber.Ctx) error {
 	// Check if account is locked
 	if user.LockedUntil != nil && user.LockedUntil.After(time.Now()) {
 		return c.Status(403).JSON(fiber.Map{
-			"error":        "Account temporarily locked due to multiple failed attempts",
+			"error":        "Account temporarily locked due to multiple failed login attempts",
 			"code":         "ACCOUNT_LOCKED",
-			"locked_until": user.LockedUntil,
-		})
-	}
-
-	// Check if account is active
-	if !user.IsActive {
-		return c.Status(403).JSON(fiber.Map{
-			"error": "Account is disabled",
-			"code":  "ACCOUNT_DISABLED",
+			"locked_until": user.LockedUntil.Format(time.RFC3339),
 		})
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		// Increment failed login counter
+		// Increment failed login count
 		user.FailedLogins++
+
+		// Lock account if too many failed attempts
 		if user.FailedLogins >= MaxFailedLogins {
 			lockUntil := time.Now().Add(AccountLockDuration)
 			user.LockedUntil = &lockUntil
-			DB.Save(&user)
-			LogAudit(user.UserID, user.Username, "ACCOUNT_LOCKED", "User", user.UserID, "", "", c.IP(), false, "Too many failed attempts")
-			return c.Status(403).JSON(fiber.Map{
-				"error":        "Account locked due to too many failed attempts",
-				"code":         "ACCOUNT_LOCKED",
-				"locked_until": lockUntil,
-			})
+			log.Printf("🔒 Account locked: %s (until %s)", user.Username, lockUntil.Format(time.RFC3339))
 		}
+
 		DB.Save(&user)
-		LogAudit(user.UserID, user.Username, "LOGIN_FAILED", "User", user.UserID, "", "", c.IP(), false, "Invalid password")
+		LogAudit(user.UserID, user.Username, "LOGIN", "User", user.UserID, "", "", c.IP(), false, "Invalid password")
+
 		return c.Status(401).JSON(fiber.Map{
-			"error": "Invalid username or password",
+			"error": "Invalid credentials",
 			"code":  "INVALID_CREDENTIALS",
 		})
 	}
 
-	// Reset failed login counter on successful login
+	// Reset failed logins on successful login
 	user.FailedLogins = 0
 	user.LockedUntil = nil
 	DB.Save(&user)
 
-	// Create session
+	// Generate session
 	sessionID, err := generateSessionID()
 	if err != nil {
-		LogAudit(user.UserID, user.Username, "LOGIN_FAILED", "Session", 0, "", "", c.IP(), false, "Failed to generate session")
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to create session",
 			"code":  "SESSION_ERROR",
 		})
 	}
 
-	expiresAt := time.Now().Add(SessionDuration)
 	session := Session{
 		SessionID: sessionID,
 		UserID:    user.UserID,
-		ExpiresAt: expiresAt,
+		ExpiresAt: time.Now().Add(SessionDuration),
 		IPAddress: c.IP(),
-		UserAgent: c.Get("User-Agent"),
+		UserAgent: string(c.Request().Header.UserAgent()),
 	}
 
 	if err := DB.Create(&session).Error; err != nil {
-		LogAudit(user.UserID, user.Username, "LOGIN_FAILED", "Session", 0, "", "", c.IP(), false, "Failed to create session")
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to create session",
-			"code":  "SESSION_ERROR",
+			"code":  "DATABASE_ERROR",
 		})
 	}
-
-	LogAudit(user.UserID, user.Username, "LOGIN", "User", user.UserID, "", "", c.IP(), true, "")
 
 	// Set cookie
 	c.Cookie(&fiber.Cookie{
 		Name:     "session_id",
 		Value:    sessionID,
-		Expires:  expiresAt,
+		Expires:  session.ExpiresAt,
 		HTTPOnly: true,
 		Secure:   false, // Set to true in production with HTTPS
 		SameSite: "Lax",
 	})
 
-	return c.JSON(LoginResponse{
-		SessionID: sessionID,
-		User:      user,
-		ExpiresAt: expiresAt,
+	LogAudit(user.UserID, user.Username, "LOGIN", "User", user.UserID, "", user.Role, c.IP(), true, "")
+
+	return c.JSON(fiber.Map{
+		"message":  "Login successful",
+		"user_id":  user.UserID,
+		"username": user.Username,
+		"role":     user.Role,
+		"email":    user.Email,
 	})
 }
 
@@ -487,15 +479,15 @@ func Logout(c *fiber.Ctx) error {
 	// Delete session
 	DB.Delete(&session)
 
-	LogAudit(user.UserID, user.Username, "LOGOUT", "User", user.UserID, "", "", c.IP(), true, "")
-
 	// Clear cookie
 	c.Cookie(&fiber.Cookie{
 		Name:     "session_id",
 		Value:    "",
-		Expires:  time.Now().Add(-time.Hour),
+		Expires:  time.Now().Add(-1 * time.Hour),
 		HTTPOnly: true,
 	})
+
+	LogAudit(user.UserID, user.Username, "LOGOUT", "User", user.UserID, "", "", c.IP(), true, "")
 
 	return c.JSON(fiber.Map{
 		"message": "Logged out successfully",
@@ -504,125 +496,136 @@ func Logout(c *fiber.Ctx) error {
 
 func GetCurrentUser(c *fiber.Ctx) error {
 	user := c.Locals("user").(User)
-	return c.JSON(user)
+
+	return c.JSON(fiber.Map{
+		"user_id":  user.UserID,
+		"username": user.Username,
+		"email":    user.Email,
+		"role":     user.Role,
+	})
+}
+
+// NEW: Check Email Availability (UserService.checkEmailAvailable)
+func CheckEmailAvailable(c *fiber.Ctx) error {
+	email := c.Query("email")
+
+	if email == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Email parameter is required",
+			"code":  "VALIDATION_ERROR",
+		})
+	}
+
+	// Validate email format (basic validation)
+	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid email format",
+			"code":  "INVALID_EMAIL",
+		})
+	}
+
+	var user User
+	result := DB.Where("email = ?", email).First(&user)
+
+	return c.JSON(fiber.Map{
+		"email":     email,
+		"available": result.RowsAffected == 0,
+		"message": func() string {
+			if result.RowsAffected == 0 {
+				return "Email is available"
+			}
+			return "Email is already registered"
+		}(),
+	})
+}
+
+// NEW: Check Username Availability
+func CheckUsernameAvailable(c *fiber.Ctx) error {
+	username := c.Query("username")
+
+	if username == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Username parameter is required",
+			"code":  "VALIDATION_ERROR",
+		})
+	}
+
+	var user User
+	result := DB.Where("username = ?", username).First(&user)
+
+	return c.JSON(fiber.Map{
+		"username":  username,
+		"available": result.RowsAffected == 0,
+		"message": func() string {
+			if result.RowsAffected == 0 {
+				return "Username is available"
+			}
+			return "Username is already taken"
+		}(),
+	})
 }
 
 // ============================================================================
 // PRODUCT ROUTES
 // ============================================================================
 
-// AddProduct handles adding a new product (FR-001) with comprehensive validation and error handling
-func AddProduct(c *fiber.Ctx) error {
-	user := c.Locals("user").(User)
-	var product Product
-
-	if err := c.BodyParser(&product); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid request body",
-			"code":  "INVALID_REQUEST",
-		})
-	}
-
-	// Validate product
-	if validationErrors := ValidateProduct(&product); len(validationErrors) > 0 {
-		return c.Status(400).JSON(fiber.Map{
-			"error":   "Validation failed",
-			"code":    "VALIDATION_ERROR",
-			"details": validationErrors,
-		})
-	}
-
-	// Check for duplicate SKU
-	var existing Product
-	result := DB.Where("sku = ?", product.SKU).First(&existing)
-	if result.RowsAffected > 0 {
-		return c.Status(409).JSON(fiber.Map{
-			"error":            "Product with this SKU already exists",
-			"code":             "DUPLICATE_SKU",
-			"existing_product": existing,
-		})
-	}
-
-	// Check for duplicate name
-	result = DB.Where("name = ?", product.Name).First(&existing)
-	if result.RowsAffected > 0 {
-		return c.Status(409).JSON(fiber.Map{
-			"error":            "Product with this name already exists",
-			"code":             "DUPLICATE_NAME",
-			"suggestion":       "Consider updating the existing product",
-			"existing_product": existing,
-		})
-	}
-
-	// Set audit fields
-	product.CreatedBy = user.UserID
-	product.UpdatedBy = user.UserID
-	product.CreatedAt = time.Now()
-	product.UpdatedAt = time.Now()
-	product.Version = 1
-
-	// Create product
-	if err := DB.Create(&product).Error; err != nil {
-		LogAudit(user.UserID, user.Username, "CREATE_PRODUCT", "Product", 0, "", "", c.IP(), false, err.Error())
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to create product",
-			"code":  "DATABASE_ERROR",
-		})
-	}
-
-	LogAudit(user.UserID, user.Username, "CREATE_PRODUCT", "Product", product.ProductID, "", product.Name, c.IP(), true, "")
-
-	// Check if product is below low stock threshold
-	if product.Quantity <= product.LowStockThreshold {
-		CreateLowStockAlert(product)
-	}
-
-	return c.Status(201).JSON(fiber.Map{
-		"message": "Product created successfully",
-		"product": product,
-	})
-}
-
-// GetInventory retrieves all products (FR-002) with search/filter
 func GetInventory(c *fiber.Ctx) error {
-	var products []Product
-
-	// Get query parameters
+	// Filters
 	search := c.Query("search", "")
 	category := c.Query("category", "")
-	lowStock := c.Query("low_stock", "")
 
-	query := DB
+	// Pagination
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("page_size", "50"))
 
-	// Apply filters
-	if search != "" {
-		query = query.Where("name ILIKE ? OR sku ILIKE ?", "%"+search+"%", "%"+search+"%")
+	if page < 1 {
+		page = 1
 	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+
+	query := DB.Model(&Product{})
+
+	// Apply search filter
+	if search != "" {
+		searchTerm := "%" + strings.ToLower(search) + "%"
+		query = query.Where("LOWER(name) LIKE ? OR LOWER(sku) LIKE ? OR LOWER(category) LIKE ?",
+			searchTerm, searchTerm, searchTerm)
+	}
+
+	// Apply category filter
 	if category != "" {
 		query = query.Where("category = ?", category)
 	}
-	if lowStock == "true" {
-		query = query.Where("quantity <= low_stock_threshold")
-	}
 
-	if err := query.Order("name ASC").Find(&products).Error; err != nil {
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// Get paginated results
+	var products []Product
+	offset := (page - 1) * pageSize
+	if err := query.Offset(offset).Limit(pageSize).Order("name ASC").Find(&products).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{
-			"error": "Unable to load inventory",
+			"error": "Failed to fetch products",
 			"code":  "DATABASE_ERROR",
 		})
 	}
 
 	return c.JSON(fiber.Map{
-		"products": products,
-		"count":    len(products),
+		"products":    products,
+		"total":       total,
+		"page":        page,
+		"page_size":   pageSize,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
 	})
 }
 
-// GetProduct retrieves a single product by ID
 func GetProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
-	var product Product
 
+	var product Product
 	if err := DB.First(&product, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{
 			"error": "Product not found",
@@ -633,86 +636,171 @@ func GetProduct(c *fiber.Ctx) error {
 	return c.JSON(product)
 }
 
-// UpdateProduct updates product quantity (FR-003) with optimistic locking
-func UpdateProduct(c *fiber.Ctx) error {
+func AddProduct(c *fiber.Ctx) error {
 	user := c.Locals("user").(User)
-	id := c.Params("id")
 
 	var product Product
-	if err := DB.First(&product, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "Product not found",
-			"code":  "NOT_FOUND",
-		})
-	}
-
-	var updateData struct {
-		Quantity int `json:"quantity"`
-		Version  int `json:"version"`
-	}
-
-	if err := c.BodyParser(&updateData); err != nil {
+	if err := c.BodyParser(&product); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "Invalid request body",
 			"code":  "INVALID_REQUEST",
 		})
 	}
 
+	// Validate required fields
+	if product.SKU == "" || product.Name == "" || product.Category == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Missing required fields: SKU, Name, and Category are required",
+			"code":  "VALIDATION_ERROR",
+		})
+	}
+
 	// Validate quantity
-	if updateData.Quantity < 0 {
+	if product.Quantity < 0 {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "Quantity cannot be negative",
-			"code":  "INVALID_QUANTITY",
+			"code":  "VALIDATION_ERROR",
 		})
 	}
-	if updateData.Quantity > MaxQuantity {
+
+	// Set metadata
+	product.CreatedBy = user.UserID
+	product.UpdatedBy = user.UserID
+	product.Version = 1
+
+	// Create product
+	if err := DB.Create(&product).Error; err != nil {
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+			return c.Status(409).JSON(fiber.Map{
+				"error": "Product with this SKU already exists",
+				"code":  "DUPLICATE_SKU",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to create product",
+			"code":  "DATABASE_ERROR",
+		})
+	}
+
+	// Log audit
+	LogAudit(user.UserID, user.Username, "CREATE_PRODUCT", "Product", product.ProductID,
+		"", product.Name, c.IP(), true, "")
+
+	// NEW: Record initial inventory move
+	RecordProductMove(
+		product.ProductID,
+		product.Name,
+		MoveTypeIN,
+		product.Quantity,
+		0,
+		product.Quantity,
+		"Initial inventory",
+		user.UserID,
+		user.Username,
+		c.IP(),
+	)
+
+	// Check for low stock
+	if product.Quantity <= product.LowStockThreshold {
+		CreateLowStockAlert(product)
+	}
+
+	return c.Status(201).JSON(product)
+}
+
+func UpdateProduct(c *fiber.Ctx) error {
+	user := c.Locals("user").(User)
+	id := c.Params("id")
+
+	var existing Product
+	if err := DB.First(&existing, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Product not found",
+			"code":  "NOT_FOUND",
+		})
+	}
+
+	var updates struct {
+		Quantity int `json:"quantity"`
+		Version  int `json:"version"`
+	}
+
+	if err := c.BodyParser(&updates); err != nil {
 		return c.Status(400).JSON(fiber.Map{
-			"error":        "Quantity exceeds maximum allowed",
-			"code":         "INVALID_QUANTITY",
-			"max_quantity": MaxQuantity,
+			"error": "Invalid request body",
+			"code":  "INVALID_REQUEST",
 		})
 	}
 
-	// Optimistic locking: Check version
-	if updateData.Version > 0 && updateData.Version != product.Version {
+	// Optimistic locking check
+	if updates.Version != existing.Version {
 		return c.Status(409).JSON(fiber.Map{
-			"error":           "This product was modified by another user. Please review the current data.",
-			"code":            "CONCURRENT_MODIFICATION",
-			"current_product": product,
+			"error":   "Product was modified by another user. Please refresh and try again.",
+			"code":    "VERSION_CONFLICT",
+			"version": existing.Version,
 		})
 	}
 
-	oldQuantity := strconv.Itoa(product.Quantity)
-	newQuantity := strconv.Itoa(updateData.Quantity)
+	// Validate quantity
+	if updates.Quantity < 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Quantity cannot be negative",
+			"code":  "VALIDATION_ERROR",
+		})
+	}
+
+	oldQty := existing.Quantity
+	newQty := updates.Quantity
+	quantityChange := newQty - oldQty
 
 	// Update product
-	product.Quantity = updateData.Quantity
-	product.UpdatedAt = time.Now()
-	product.UpdatedBy = user.UserID
-	product.Version++
+	existing.Quantity = newQty
+	existing.Version++
+	existing.UpdatedBy = user.UserID
 
-	if err := DB.Save(&product).Error; err != nil {
-		LogAudit(user.UserID, user.Username, "UPDATE_PRODUCT", "Product", product.ProductID, oldQuantity, newQuantity, c.IP(), false, err.Error())
+	if err := DB.Save(&existing).Error; err != nil {
+		LogAudit(user.UserID, user.Username, "UPDATE_PRODUCT", "Product", existing.ProductID,
+			strconv.Itoa(oldQty), strconv.Itoa(newQty), c.IP(), false, err.Error())
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to update product",
 			"code":  "DATABASE_ERROR",
 		})
 	}
 
-	LogAudit(user.UserID, user.Username, "UPDATE_PRODUCT", "Product", product.ProductID, oldQuantity, newQuantity, c.IP(), true, "")
+	// Log audit
+	LogAudit(user.UserID, user.Username, "UPDATE_PRODUCT", "Product", existing.ProductID,
+		strconv.Itoa(oldQty), strconv.Itoa(newQty), c.IP(), true, "")
 
-	// Check for low stock and create alert if needed
-	if product.Quantity <= product.LowStockThreshold {
-		CreateLowStockAlert(product)
+	// NEW: Record product movement
+	moveType := MoveTypeADJUSTMENT
+	if quantityChange > 0 {
+		moveType = MoveTypeIN
+	} else if quantityChange < 0 {
+		moveType = MoveTypeOUT
 	}
 
-	return c.JSON(fiber.Map{
-		"message": "Product updated successfully",
-		"product": product,
-	})
+	reason := fmt.Sprintf("Quantity adjusted by %s", user.Username)
+	RecordProductMove(
+		existing.ProductID,
+		existing.Name,
+		moveType,
+		quantityChange,
+		oldQty,
+		newQty,
+		reason,
+		user.UserID,
+		user.Username,
+		c.IP(),
+	)
+
+	// Check for low stock
+	if existing.Quantity <= existing.LowStockThreshold {
+		CreateLowStockAlert(existing)
+	}
+
+	return c.JSON(existing)
 }
 
-// DeleteProduct removes a product
 func DeleteProduct(c *fiber.Ctx) error {
 	user := c.Locals("user").(User)
 	id := c.Params("id")
@@ -726,17 +814,129 @@ func DeleteProduct(c *fiber.Ctx) error {
 	}
 
 	if err := DB.Delete(&product).Error; err != nil {
-		LogAudit(user.UserID, user.Username, "DELETE_PRODUCT", "Product", product.ProductID, product.Name, "", c.IP(), false, err.Error())
+		LogAudit(user.UserID, user.Username, "DELETE_PRODUCT", "Product", product.ProductID,
+			product.Name, "", c.IP(), false, err.Error())
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to delete product",
 			"code":  "DATABASE_ERROR",
 		})
 	}
 
-	LogAudit(user.UserID, user.Username, "DELETE_PRODUCT", "Product", product.ProductID, product.Name, "", c.IP(), true, "")
+	LogAudit(user.UserID, user.Username, "DELETE_PRODUCT", "Product", product.ProductID,
+		product.Name, "", c.IP(), true, "")
+
+	// Delete related alerts
+	DB.Where("product_id = ?", product.ProductID).Delete(&LowStockAlert{})
 
 	return c.JSON(fiber.Map{
 		"message": "Product deleted successfully",
+	})
+}
+
+// NEW: Get Product Movement History (InventoryService.getProductMoves)
+func GetProductMoves(c *fiber.Ctx) error {
+	productID := c.Params("id")
+
+	// Verify product exists
+	var product Product
+	if err := DB.First(&product, productID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Product not found",
+			"code":  "NOT_FOUND",
+		})
+	}
+
+	// Pagination
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("page_size", "50"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+
+	// Optional filters
+	moveType := c.Query("move_type", "")
+
+	query := DB.Where("product_id = ?", productID)
+
+	if moveType != "" {
+		query = query.Where("move_type = ?", strings.ToUpper(moveType))
+	}
+
+	// Get total count
+	var total int64
+	query.Model(&ProductMove{}).Count(&total)
+
+	// Get paginated moves
+	var moves []ProductMove
+	offset := (page - 1) * pageSize
+	if err := query.Order("timestamp DESC").Limit(pageSize).Offset(offset).Find(&moves).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to fetch product moves",
+			"code":  "DATABASE_ERROR",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"product_id":   product.ProductID,
+		"product_name": product.Name,
+		"moves":        moves,
+		"total":        total,
+		"page":         page,
+		"page_size":    pageSize,
+		"total_pages":  (total + int64(pageSize) - 1) / int64(pageSize),
+	})
+}
+
+// NEW: Get All Product Moves (across all products)
+func GetAllProductMoves(c *fiber.Ctx) error {
+	// Pagination
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("page_size", "50"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+
+	// Filters
+	moveType := c.Query("move_type", "")
+	userID := c.Query("user_id", "")
+
+	query := DB.Model(&ProductMove{})
+
+	if moveType != "" {
+		query = query.Where("move_type = ?", strings.ToUpper(moveType))
+	}
+	if userID != "" {
+		query = query.Where("user_id = ?", userID)
+	}
+
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// Get paginated moves
+	var moves []ProductMove
+	offset := (page - 1) * pageSize
+	if err := query.Order("timestamp DESC").Limit(pageSize).Offset(offset).Find(&moves).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to fetch product moves",
+			"code":  "DATABASE_ERROR",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"moves":       moves,
+		"total":       total,
+		"page":        page,
+		"page_size":   pageSize,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
 	})
 }
 
@@ -768,7 +968,8 @@ func CreateLowStockAlert(product Product) {
 	}
 
 	DB.Create(&alert)
-	log.Printf("⚠️  Low stock alert created for product: %s (Qty: %d, Threshold: %d)", product.Name, product.Quantity, product.LowStockThreshold)
+	log.Printf("⚠️  Low stock alert created for product: %s (Qty: %d, Threshold: %d)",
+		product.Name, product.Quantity, product.LowStockThreshold)
 }
 
 func GetLowStockAlerts(c *fiber.Ctx) error {
@@ -895,7 +1096,13 @@ func HealthCheck(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":    "healthy",
 		"message":   "Dunder Mifflin Inventory System is running",
+		"version":   "2.1",
 		"timestamp": time.Now(),
+		"features": fiber.Map{
+			"product_moves_tracking":      true,
+			"email_availability_check":    true,
+			"username_availability_check": true,
+		},
 	})
 }
 
@@ -925,7 +1132,7 @@ func main() {
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
-		AppName:      "Dunder Mifflin Inventory System v2.0",
+		AppName:      "Dunder Mifflin Inventory System v2.1",
 		ErrorHandler: CustomErrorHandler,
 	})
 
@@ -935,6 +1142,19 @@ func main() {
 		AllowOrigins:     "http://localhost:3000,http://localhost:8080",
 		AllowCredentials: true,
 	}))
+
+	// Favicon middleware
+	app.Use(favicon.New(favicon.Config{
+		File: "./public/img/favicon.png",
+	}))
+
+	// Handle apple touch icons
+	app.Get("/apple-touch-icon.png", func(c *fiber.Ctx) error {
+		return c.SendFile("./public/img/apple-touch-icon.png")
+	})
+	app.Get("/apple-touch-icon-precomposed.png", func(c *fiber.Ctx) error {
+		return c.SendFile("./public/img/apple-touch-icon.png")
+	})
 
 	// Serve static files
 	app.Static("/", "./public")
@@ -948,6 +1168,10 @@ func main() {
 	// Authentication routes (public)
 	api.Post("/auth/login", Login)
 
+	// NEW: User availability checks (public - for registration forms)
+	api.Get("/users/check-email", CheckEmailAvailable)
+	api.Get("/users/check-username", CheckUsernameAvailable)
+
 	// Protected routes
 	protected := api.Group("", AuthMiddleware)
 	protected.Post("/auth/logout", Logout)
@@ -960,6 +1184,10 @@ func main() {
 	protected.Put("/products/:id", RoleMiddleware(RoleEmployee, RoleManager, RoleAdmin), UpdateProduct)
 	protected.Delete("/products/:id", RoleMiddleware(RoleManager, RoleAdmin), DeleteProduct)
 
+	// NEW: Product movement history routes
+	protected.Get("/products/:id/moves", GetProductMoves) // Get moves for specific product
+	protected.Get("/inventory/moves", GetAllProductMoves) // Get all moves
+
 	// Low stock alerts (managers and admins only)
 	protected.Get("/alerts", RoleMiddleware(RoleManager, RoleAdmin), GetLowStockAlerts)
 	protected.Post("/alerts/:id/acknowledge", RoleMiddleware(RoleManager, RoleAdmin), AcknowledgeAlert)
@@ -970,6 +1198,8 @@ func main() {
 	// Start server
 	log.Println("✓ Server starting on http://localhost:3000")
 	log.Println("✓ Default users created - check console for credentials")
+	log.Println("✓ NEW: Product movement tracking enabled")
+	log.Println("✓ NEW: Email/Username availability check endpoints added")
 	log.Fatal(app.Listen(":3000"))
 }
 

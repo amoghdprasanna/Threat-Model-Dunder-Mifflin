@@ -20,7 +20,7 @@
       justify-content: flex-start;
       align-items: center;
       padding-left: 10%;
-      background: url('https://wallpapers.com/images/high/the-office-background-rak6btfog0un34th.webp') no-repeat right center / cover;
+      background: url('/img/the-office.webp') no-repeat right center / cover;
     }
 
     body::before {
@@ -260,7 +260,7 @@
 
   <div class="login-card">
     <!-- Logo -->
-    <img src="https://m.media-amazon.com/images/I/51MlenT-i+L._AC_.jpg" alt="Dunder Mifflin Logo" class="logo">
+    <img src="img/DM_logo.jpg" alt="Dunder Mifflin Logo" class="logo">
 
     <h2>Employee Login</h2>
 
@@ -280,15 +280,15 @@
     </form>
 
     <!-- Demo Credentials Helper -->
-    <div class="demo-credentials">
+    <!-- <div class="demo-credentials">
       <h4>📋 Demo Accounts:</h4>
       <ul>
-        <li><span class="role">Administrator:</span> admin / Admin123!</li>
-        <li><span class="role">Manager:</span> mscott / Manager123!</li>
-        <li><span class="role">Employee:</span> dwight / Employee123!</li>
-        <li><span class="role">Sales:</span> jim / Sales123!</li>
+        <li><span class="role">Administrator:</span> admin / Admin123!@#$</li>
+        <li><span class="role">Manager:</span> mscott / Manager123!@#$</li>
+        <li><span class="role">Employee:</span> dwight / Employee123!@#$</li>
+        <li><span class="role">Sales:</span> jim / Sales123!@#$</li>
       </ul>
-    </div>
+    </div> -->
 
     <div class="login-footer">
       © 2025 Dunder Mifflin Inc. | <a href="index.html#contact">Need Help?</a>
@@ -316,22 +316,21 @@
 
     /**
      * Store user session data
+     * Note: session_id is now stored in HTTP-only cookie by server
      */
     function storeSession(data) {
-      // Store in sessionStorage
-      sessionStorage.setItem('user', data.user.username);
-      sessionStorage.setItem('userId', data.user.user_id);
-      sessionStorage.setItem('role', data.user.role);
-      sessionStorage.setItem('email', data.user.email);
-      sessionStorage.setItem('sessionId', data.session_id);
+      // Store user info in sessionStorage (NOT the session token - that's in the cookie)
+      sessionStorage.setItem('user', data.username);
+      sessionStorage.setItem('userId', data.user_id);
+      sessionStorage.setItem('role', data.role);
+      sessionStorage.setItem('email', data.email);
       sessionStorage.setItem('loggedIn', 'true');
       sessionStorage.setItem('loginTime', new Date().toISOString());
-      sessionStorage.setItem('expiresAt', data.expires_at);
       
       console.log('✓ Session stored:', {
-        user: data.user.username,
-        role: data.user.role,
-        sessionId: data.session_id
+        user: data.username,
+        role: data.role,
+        note: 'Session cookie set by server (HTTP-only)'
       });
     }
 
@@ -355,7 +354,7 @@
           return `Account locked due to too many failed attempts. Try again in ${minutes} minutes.`;
         case 'ACCOUNT_DISABLED':
           return 'Your account has been disabled. Please contact your administrator.';
-        case 'MISSING_CREDENTIALS':
+        case 'VALIDATION_ERROR':
           return 'Please enter both username and password.';
         default:
           return error.error || 'Login failed. Please try again.';
@@ -372,7 +371,7 @@
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include', // Important: Include cookies
+          credentials: 'include', // CRITICAL: Include cookies
           body: JSON.stringify({
             username: username,
             password: password
@@ -426,24 +425,46 @@
       const result = await authenticateUser(username, password);
 
       if (result.success) {
-        // Successful login
-        console.log('✓ Login successful:', result.data.user);
+        // Successful login - the cookie is set automatically by the browser
+        console.log('✓ Login successful:', result.data);
         
         // Clear any existing session first
         sessionStorage.clear();
         
-        // Store new session data
+        // Store user data (not the session token - that's in HTTP-only cookie)
         storeSession(result.data);
         
         // Show success message with role
-        const role = result.data.user.role;
+        const role = result.data.role;
         showAlert(`Welcome, ${username}! (${role}) Redirecting...`, "success");
         
-        // Redirect to inventory after 1 second
-        setTimeout(function() {
-          console.log('→ Redirecting to inventory...');
-          window.location.replace("inventory.html");
-        }, 1000);
+        // Small delay to ensure cookie is fully set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Verify session before redirecting
+        try {
+          const verifyResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+            credentials: 'include'
+          });
+          
+          if (verifyResponse.ok) {
+            console.log('✓ Session verified, redirecting to inventory...');
+            setTimeout(function() {
+              window.location.replace("inventory.html");
+            }, 500);
+          } else {
+            console.error('✗ Session verification failed after login');
+            showAlert('Login successful but session not verified. Please try logging in again.', 'warning');
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Login";
+          }
+        } catch (verifyError) {
+          console.error('✗ Error verifying session:', verifyError);
+          // Still redirect even if verification fails
+          setTimeout(function() {
+            window.location.replace("inventory.html");
+          }, 500);
+        }
       } else {
         // Failed login
         console.log('✗ Login failed:', result.error);
@@ -464,17 +485,16 @@
      * Check if user is already logged in
      */
     window.addEventListener('DOMContentLoaded', async function() {
-      const sessionId = sessionStorage.getItem('sessionId');
       const loggedIn = sessionStorage.getItem('loggedIn');
       
-      if (loggedIn === 'true' && sessionId) {
+      if (loggedIn === 'true') {
         const username = sessionStorage.getItem('user');
-        console.log('→ User already logged in, verifying session...');
+        console.log('→ User session detected, verifying with server...');
         
         // Verify session is still valid with backend
         try {
           const response = await fetch(`${API_BASE_URL}/auth/me`, {
-            credentials: 'include'
+            credentials: 'include' // CRITICAL: Send cookie
           });
           
           if (response.ok) {
@@ -517,19 +537,19 @@
         switch(e.key) {
           case '1': // Admin
             username = 'admin';
-            password = 'Admin123!';
+            password = 'Admin123!@#$';
             break;
           case '2': // Manager
             username = 'mscott';
-            password = 'Manager123!';
+            password = 'Manager123!@#$';
             break;
           case '3': // Employee
             username = 'dwight';
-            password = 'Employee123!';
+            password = 'Employee123!@#$';
             break;
           case '4': // Sales
             username = 'jim';
-            password = 'Sales123!';
+            password = 'Sales123!@#$';
             break;
         }
         
@@ -551,6 +571,7 @@
         
         if (data.status === 'healthy') {
           console.log('✓ Backend server is running');
+          console.log('✓ Server version:', data.version);
         } else {
           console.warn('⚠ Backend server returned unhealthy status');
         }

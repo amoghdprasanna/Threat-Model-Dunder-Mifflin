@@ -1,26 +1,74 @@
-# Database files
+# =====================================
+# DATABASE FILES
+# =====================================
 *.db
 *.sqlite
 *.sqlite3
 dundermifflin.db
 
-# PostgreSQL
+# =====================================
+# POSTGRESQL
+# =====================================
 *.sql
 pgdata/
 
-# Environment variables
+# =====================================
+# ENVIRONMENT VARIABLES
+# =====================================
 .env
+.env.local
+.env.production
 
-# Go binaries
+# =====================================
+# GO BUILD ARTIFACTS
+# =====================================
 dundermifflin
 dundermifflin.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test        # built by `go test -c`
+*.out         # coverage output
 
-# IDE files
+# Directories
+bin/
+dist/
+build/
+vendor/
+go.work
+
+# =====================================
+# LOG FILES
+# =====================================
+*.log
+logs/
+
+# =====================================
+# BACKUP / TEMPORARY FILES
+# =====================================
+*backup*
+*.backup
+*.bak
+*.back
+backup/
+backups/
+tmp/
+temp/
+*.tmp
+
+# =====================================
+# EDITOR / IDE FILES
+# =====================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# OS files
+# =====================================
+# OS-SPECIFIC FILES
+# =====================================
 .DS_Store
 Thumbs.db
